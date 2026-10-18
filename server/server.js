@@ -2,9 +2,9 @@ import app from "./app.js";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
-  Cloud_name: process.env.CLOUDINARY_CLIENT_NAME,
-  Api_key: process.env.CLOUDINARY_CLIENT_API,
-  Api_secret: process.env.CLOUDINARY_CLIENT_SECRET,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 try {
@@ -12,5 +12,5 @@ try {
     console.log(`Server is running on port ${process.env.PORT}`);
   });
 } catch (error) {
-  console.log(`Server not runnin: ${error}`);
+  console.log(`Server not running: ${error}`);
 }

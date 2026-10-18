@@ -1,9 +1,12 @@
 import express from "express";
-import {config} from "dotenv";
+import { config } from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { urlencoded } from "express";
 import fileUpload from "express-fileupload";
+import { createTable } from "./utils/createTable.js";
+import { errorMiddleware } from "./middlewares/errorMiddleware.js";
+import authRouter from "./routes/authRoutes.js";
 
 const app = express();
 
@@ -16,10 +19,13 @@ app.use(
     credentials: true,
   }),
 );
+// chech database all table create 
+createTable();
 
 // middlewares
 app.use(express.json());
 app.use(cookieParser());
+app.use(errorMiddleware);
 app.use(urlencoded({ extended: true }));
 app.use(
   fileUpload({
@@ -27,5 +33,7 @@ app.use(
     useTempFiles: true,
   }),
 );
+// route fix
+app.use("/api/v1/auth", authRouter);
 
 export default app;
