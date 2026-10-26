@@ -11,6 +11,7 @@ import {
 } from "../controllers/authController.js";
 import { isAuthenticated } from "../middlewares/authMiddleware.js";
 
+
 const router = express.Router();
 
 router.post("/register", register);
@@ -21,6 +22,10 @@ router.post("/password/forgot", forgotPassword);
 router.put("/password/forgot/:token", resetPassword);
 router.put("/password/update", isAuthenticated, updatePassword);
 router.put("/profile/update", isAuthenticated, updateProfile);
+
+
+
+
 
 
 

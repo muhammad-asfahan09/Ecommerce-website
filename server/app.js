@@ -7,6 +7,8 @@ import fileUpload from "express-fileupload";
 import { createTable } from "./utils/createTable.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import authRouter from "./routes/authRoutes.js";
+import productRouter from "./routes/productRoutes.js";
+import adminRouter from "./routes/adminRoutes.js";
 
 const app = express();
 
@@ -19,13 +21,12 @@ app.use(
     credentials: true,
   }),
 );
-// chech database all table create 
+// chech database all table create
 createTable();
 
 // middlewares
 app.use(express.json());
 app.use(cookieParser());
-app.use(errorMiddleware);
 app.use(urlencoded({ extended: true }));
 app.use(
   fileUpload({
@@ -35,5 +36,8 @@ app.use(
 );
 // route fix
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/products", productRouter);
+app.use("/api/v1/admin", adminRouter);
 
+app.use(errorMiddleware);
 export default app;
