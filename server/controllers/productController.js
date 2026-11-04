@@ -396,7 +396,7 @@ export const fetchAIFilteredProducts = catchAsyncError(
 
     const filterKeywords = (query) => {
       const stopWords = new Set([
-         "the",
+        "the",
         "they",
         "them",
         "then",
@@ -472,7 +472,6 @@ export const fetchAIFilteredProducts = catchAsyncError(
         "8",
         "9",
         "10",
-
       ]);
 
       return query

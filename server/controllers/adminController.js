@@ -58,32 +58,45 @@ export const deleteUser = catchAsyncError(async (req, res, next) => {
 });
 
 export const dashboardStats = catchAsyncError(async (req, res, next) => {
+  //  Get TodayDate
   const today = new Date();
   const todayDate = today.toISOString().split("T")[0];
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayDate = today.toISOString().split("T")[0];
 
+  // Get yesterday Data
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayDate = yesterday.toISOString().split("T")[0];
+
+  //   CurrentMonthStart And currentMonthEnd
   const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const currentMonthEnd = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    1,
+  );
+
+  //    previousMonthStart And previousMonthEnd
   const previousMonthStart = new Date(
     today.getFullYear(),
     today.getMonth() - 1,
+    1,
   );
-  const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 1);
 
+  //   total revenue count
   const totalRevenueAllTimeQuery = await database.query(
     `SELECT SUM(total_price) FROM orders`,
   );
   const totalRevenueAllTime =
     parseFloat(totalRevenueAllTimeQuery.rows[0].sum) || 0;
 
+  // total user count
   const totalUserCountQuery = await database.query(
     `SELECT COUNT(*) FROM users where role = 'User'`,
   );
   const totalUserCount = parseInt(totalUserCountQuery.rows[0].count) || 0;
 
-  //   Order Status Count
-
+  //   Order Status Count >>>
   const orderStatusCountQuery = await database.query(
     `SELECT order_status, COUNT(*) FROM orders GROUP BY order_status `,
   );
@@ -93,18 +106,17 @@ export const dashboardStats = catchAsyncError(async (req, res, next) => {
     Delivered: 0,
     Cancelled: 0,
   };
-  orderStatusCountQuery.rows.forEach((rows) => {
+  orderStatusCountQuery.rows.forEach((row) => {
     orderStatusCount[row.order_status] = parseInt(row.count);
   });
 
   //   Today Revenue Query
-
   const todayRevenueQuery = await database.query(
     `SELECT SUM(total_price) FROM orders WHERE DATE(created_at) = $1`,
     [todayDate],
   );
 
-  const todatRevenue = parseFloat(todayRevenueQuery.rows[0].sum) || 0;
+  const todayRevenue = parseFloat(todayRevenueQuery.rows[0].sum) || 0;
 
   //   Yesterday Revenue Query
 
@@ -118,10 +130,10 @@ export const dashboardStats = catchAsyncError(async (req, res, next) => {
   //   Monthly sale Revenue
   const monthlySalesQuery = await database.query(
     `SELECT TO_CHAR(created_at, 'Mon YYYY') AS month,
-    DATE_TRUNC('month', craeted_at) as date,
-    SUM(total_price) as totalsales
+    DATE_TRUNC('month', created_at) as date,
+    SUM(total_price) as totalSales
     FROM orders
-    GROUP BY month,data 
+    GROUP BY month, date
     ORDER BY date ASC`,
   );
 
@@ -134,22 +146,74 @@ export const dashboardStats = catchAsyncError(async (req, res, next) => {
 
   const topSellingProductsQuery = await database.query(
     `SELECT p.name, 
-    p.image->0->>'url' AS image,
+    p.images->0->>'url' AS image,
     p.category,
-    p.rating,
+    p.ratings,
     SUM(oi.quantity) AS total_sold
     FROM order_items oi
     JOIN products p ON p.id = oi.product_id
-    GROUP BY p.name, p.image, p.category, p.ratings
+    GROUP BY p.name, p.images, p.category, p.ratings
     ORDER BY total_sold DESC
     LIMIT 5
     `,
   );
-  const topProducts = topSellingProductsQuery.rows;
+  const topSellingProducts = topSellingProductsQuery.rows;
 
   //   Total sales of Current Month
   const currentMonthSaleQuery = await database.query(
-    `SELECT SUM(total_price) AS total FROM orders WHERE created_at >= $1 AND created_at < (CURRENT_DATE + INTERVAL '30 DAY')`,
-    [currentMonthStart],
+    `SELECT SUM(total_price) AS total 
+    FROM orders 
+    WHERE created_at >= $1 AND created_at < $2`,
+    [currentMonthStart, currentMonthEnd],
   );
+
+  const currentMonthSales =
+    parseFloat(currentMonthSaleQuery.rows[0].total) || 0;
+
+  // Products with stock less then or equal 5
+  const lowStockProductsQuery = await database.query(
+    `SELECT name,stock FROM products WHERE stock <= 5`,
+  );
+
+  const lowStockProduct = lowStockProductsQuery.rows;
+
+  //   Revenue Growth Rate %
+  const lastMonthRevenueQuery = await database.query(
+    `SELECT SUM(total_price) AS total 
+    FROM orders 
+    where created_at >= $1 AND created_at < $2 `,
+    [previousMonthStart, previousMonthEnd],
+  );
+  const lastMonthRevenue = parseFloat(lastMonthRevenueQuery.rows[0].total) || 0;
+
+  let revenueGrowth = "0%";
+  if (lastMonthRevenue > 0) {
+    const growthRate =
+      ((currentMonthSales - lastMonthRevenue) / lastMonthRevenue) * 100;
+    revenueGrowth = `${growthRate >= 0 ? "+" : ""}${growthRate.toFixed(2)}%`;
+  }
+
+  //   New user this month
+  const newUserThisMonthQuery = await database.query(
+    `SELECT COUNT(*) FROM users
+   WHERE created_at >= $1 AND created_at < $2 AND role = 'User'`,
+    [currentMonthStart, currentMonthEnd],
+  );
+  const newUserThisMonth = parseFloat(newUserThisMonthQuery.rows[0].count) || 0;
+
+  res.status(200).json({
+    success: true,
+    message: "Dashboard states fetched successfully",
+    totalRevenueAllTime,
+    todayRevenue,
+    yesterdayRevenue,
+    totalUserCount,
+    orderStatusCount,
+    monthlySales,
+    currentMonthSales,
+    topSellingProducts,
+    lowStockProduct,
+    revenueGrowth,
+    newUserThisMonth,
+  });
 });
